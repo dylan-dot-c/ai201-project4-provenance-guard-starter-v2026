@@ -79,7 +79,7 @@ Of 10 appeals sent with a real content_id, all 10 return status `under_review` a
 
 Of 10 bad-input test cases (missing text, empty text, text over 20,000 characters, a body that isn't JSON, and similar), at least 8 get a JSON response instead of a crash (no 500). Text over the length limit is split into chunks and scored rather than rejected outright.
 
-**Why this target:** A long piece of writing is still real writing, so it should get scored rather than turned away with an error. <!-- TODO (Dylan): check this says what you meant -->
+**Why this target:** A long piece of writing is still real writing, so it should get scored rather than turned away with an error.
 
 ---
 
