@@ -5,14 +5,14 @@ Five criteria that say what "working" means for this service, written in unit 7
 
 **All five are yours.** None are given.
 
-An acceptance criterion names a number or something plainly observable. *"The
-detector is accurate"* is an opinion — and perfect AI detection isn't possible
-anyway, so it's an opinion about something nobody can deliver. *"Of 10 pieces I
-wrote myself, at most 1 is labelled high-confidence AI"* is a criterion.
+An acceptance criterion names a number or something plainly observable. _"The
+detector is accurate"_ is an opinion — and perfect AI detection isn't possible
+anyway, so it's an opinion about something nobody can deliver. _"Of 10 pieces I
+wrote myself, at most 1 is labelled high-confidence AI"_ is a criterion.
 
-Under each, write a sentence or two on **why that target**. *"I allow at most 1
+Under each, write a sentence or two on **why that target**. _"I allow at most 1
 false positive in 10 because on a writing site a wrong accusation costs more
-than a missed detection"* is a real answer.
+than a missed detection"_ is a real answer.
 
 > Missing your own targets next unit costs you nothing. Setting a target so
 > easy you can't miss it does.
@@ -23,13 +23,13 @@ than a missed detection"* is a real answer.
 
 **Cover at least three of these five areas.** They're prompts, not a form.
 
-| Area | A question it could answer |
-|---|---|
-| False positives | How often may a human's writing get called AI? |
-| Score spread | How far apart should clearly-AI and clearly-human text score? |
-| Label coverage | Is every one of your three labels actually reachable? |
-| The appeal path | Does an appeal always change status and always get recorded? |
-| Bad input | What happens when `text` is missing, empty, or enormous? |
+| Area            | A question it could answer                                    |
+| --------------- | ------------------------------------------------------------- |
+| False positives | How often may a human's writing get called AI?                |
+| Score spread    | How far apart should clearly-AI and clearly-human text score? |
+| Label coverage  | Is every one of your three labels actually reachable?         |
+| The appeal path | Does an appeal always change status and always get recorded?  |
+| Bad input       | What happens when `text` is missing, empty, or enormous?      |
 
 Two things worth knowing before you pick numbers:
 
@@ -42,6 +42,7 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
+
 ## 1. False positives on my own writing
 
 Of 10 pieces I wrote myself, at most 2 are labelled high-confidence AI.
@@ -62,7 +63,7 @@ The clearly-AI calibration piece and the clearly-human calibration piece (both q
 
 Across a test set of 15 pieces, each of the three labels (high-confidence human, unsure, high-confidence AI) is returned at least once.
 
-**Why this target:** <!-- TODO (Dylan): your reason -->
+**Why this target:** This would be useful because it shows the different types of data present.
 
 ---
 
@@ -70,7 +71,7 @@ Across a test set of 15 pieces, each of the three labels (high-confidence human,
 
 Of 10 appeals sent with a real content_id, all 10 return status `under_review` and appear in `logs/audit.jsonl` next to the original decision.
 
-**Why this target:** <!-- TODO (Dylan): your reason -->
+**Why this target:** This will help with testing and reviewing.
 
 ---
 
