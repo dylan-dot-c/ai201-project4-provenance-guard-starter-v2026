@@ -21,7 +21,7 @@ import config
 
 def combine_signals(model_score: float, style_score: float) -> float:
     """
-    Combine two 0–1 signals into one 0–1 score. ← TODO (Milestone 4)
+    Combine two 0–1 signals into one 0–1 score.
 
     Both inputs point the same way: higher means more likely AI. Your output
     should too.
@@ -52,17 +52,24 @@ def combine_signals(model_score: float, style_score: float) -> float:
     The weights in config.py are placeholders. Change them, or ignore them and
     write a different rule.
     """
-    # TODO: replace this
-    return (
+    # 1. Weighted average. The model signal gets more weight because it
+    #    separated the calibration inputs more widely than the style signal.
+    score = (
         config.WEIGHT_MODEL_SIGNAL * model_score
         + config.WEIGHT_STYLE_SIGNAL * style_score
     )
+
+    # 2. Disagreement rule. If the signals are far apart, neither is trusted
+    #    to carry the decision: the score is pulled toward 0.5, into "unsure".
+    if abs(model_score - style_score) > config.DISAGREEMENT_GAP:
+        score = 0.5 + (score - 0.5) * config.DISAGREEMENT_DAMPING
+
+    return round(min(max(score, 0.0), 1.0), 4)
 
 
 def score_to_label(score: float) -> tuple[str, str]:
     """
     Turn a score into a guess and the text a reader actually sees.
-    ← TODO (Milestone 5)
 
     Returns:
         (guess, label_text) — where `guess` is a short machine-readable string
@@ -85,12 +92,31 @@ def score_to_label(score: float) -> tuple[str, str]:
     think if they got it on their own work. That question is the whole
     milestone.
     """
-    # TODO: replace this — thresholds are in config.py
     if score >= config.AI_THRESHOLD:
-        return "ai", "PLACEHOLDER — write the high-confidence AI label."
+        return "ai", AI_LABEL
     if score <= config.HUMAN_THRESHOLD:
-        return "human", "PLACEHOLDER — write the high-confidence human label."
-    return "unsure", "PLACEHOLDER — write the unsure label."
+        return "human", HUMAN_LABEL
+    return "unsure", UNSURE_LABEL
+
+
+HUMAN_LABEL = (
+    "We think this was written by a person. Our automated check found the "
+    "kind of variety in wording and rhythm that people's writing usually has."
+)
+
+UNSURE_LABEL = (
+    "We couldn't tell whether this was written by a person or with help from "
+    "an AI tool, so we aren't making a call either way. This isn't an "
+    "accusation, and nothing about how your work is shown has changed. "
+    "Automated checks are often unsure about short or plainly written pieces."
+)
+
+AI_LABEL = (
+    "Our automated check thinks this may have been written with help from an "
+    "AI tool. Checks like this can be wrong, especially about plain or simple "
+    "writing. If you wrote this yourself, you can ask for a person to review "
+    "it, and we'll mark it as under review while they do."
+)
 
 
 def label_ranges() -> list[tuple[str, str]]:

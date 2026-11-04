@@ -54,8 +54,14 @@ DETECTOR_MAX_TOKENS = 400
 # down BEFORE you code it, and to put the numbers in your README. Whatever you
 # decide, it goes here.
 
-WEIGHT_MODEL_SIGNAL = 0.5
-WEIGHT_STYLE_SIGNAL = 0.5
+WEIGHT_MODEL_SIGNAL = 0.6
+WEIGHT_STYLE_SIGNAL = 0.4
+
+# When the two signals are further apart than this, they're disagreeing, and
+# the combined score is pulled halfway back toward 0.5. Two methods that
+# disagree is uncertainty, and uncertainty shouldn't become an accusation.
+DISAGREEMENT_GAP = 0.35
+DISAGREEMENT_DAMPING = 0.5
 
 
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────
@@ -72,7 +78,19 @@ WEIGHT_STYLE_SIGNAL = 0.5
 # that decide who pays for it.
 
 HUMAN_THRESHOLD = 0.35
-AI_THRESHOLD = 0.65
+AI_THRESHOLD = 0.72     # raised from 0.65: the AI label needs stronger evidence
+
+# Inputs the route refuses before any signal runs.
+MIN_WORDS = 5
+MAX_CHARS = 20_000
+
+# Text over MAX_CHARS isn't refused: it's split into chunks of about
+# CHUNK_CHARS, each chunk is scored, and the scores are averaged. Past
+# MAX_CHUNKS, evenly spaced chunks are sampled so a huge paste can't tie the
+# model up. Only text over HARD_MAX_CHARS is refused outright.
+CHUNK_CHARS = 2_000
+MAX_CHUNKS = 10
+HARD_MAX_CHARS = 500_000
 
 # ⚠️ One thing that catches people out in Milestone 5. A weighted average can
 # only land between its two inputs — so while `style_signal` is still the stub
