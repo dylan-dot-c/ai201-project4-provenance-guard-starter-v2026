@@ -42,63 +42,43 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+## 1. False positives on my own writing
 
-<!-- Your criterion. It must name a number. -->
+Of 10 pieces I wrote myself, at most 2 are labelled high-confidence AI.
 
-
-
-**Why this target:**
-
-
+**Why this target:** A wrong accusation costs a real writer much more than a missed AI piece costs the site. I allow 2 rather than 0 because plain writing with common vocabulary reads as AI-like to both signals, and I've already seen that happen.
 
 ---
 
-## 2.
+## 2. Score spread between clearly-AI and clearly-human text
 
-<!-- Your criterion. -->
+The clearly-AI calibration piece and the clearly-human calibration piece (both quoted in the README) score at least 0.5 apart on the combined confidence score.
 
-
-
-**Why this target:**
-
-
+**Why this target:** The system has to be sure something isn't AI before it says so, so clearly-AI and clearly-human writing should be strongly separated, not just slightly apart.
 
 ---
 
-## 3.
+## 3. Every label is reachable
 
-<!-- Your criterion. -->
+Across a test set of 15 pieces, each of the three labels (high-confidence human, unsure, high-confidence AI) is returned at least once.
 
-
-
-**Why this target:**
-
-
+**Why this target:** <!-- TODO (Dylan): your reason -->
 
 ---
 
-## 4.
+## 4. The appeal path
 
-<!-- Your criterion. -->
+Of 10 appeals sent with a real content_id, all 10 return status `under_review` and appear in `logs/audit.jsonl` next to the original decision.
 
-
-
-**Why this target:**
-
-
+**Why this target:** <!-- TODO (Dylan): your reason -->
 
 ---
 
-## 5.
+## 5. Bad input
 
-<!-- Your criterion. -->
+Of 10 bad-input test cases (missing text, empty text, text over 20,000 characters, a body that isn't JSON, and similar), at least 8 get a JSON response instead of a crash (no 500). Text over the length limit is split into chunks and scored rather than rejected outright.
 
-
-
-**Why this target:**
-
-
+**Why this target:** A long piece of writing is still real writing, so it should get scored rather than turned away with an error. <!-- TODO (Dylan): check this says what you meant -->
 
 ---
 
