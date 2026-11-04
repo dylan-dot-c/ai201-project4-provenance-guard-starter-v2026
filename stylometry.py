@@ -49,7 +49,7 @@ def words(text: str) -> list[str]:
 
 def sentence_length_spread(text: str) -> float:
     """
-    How much sentence length varies. ← TODO
+    How much sentence length varies.
 
     Returns:
         A float. Decide yourself what scale it's on and which direction means
@@ -64,13 +64,21 @@ def sentence_length_spread(text: str) -> float:
     `stdev` raises on fewer than two values. Decide what that should return
     before the attack set decides for you.
     """
-    # TODO: replace this
-    return 0.0
+    lengths = [len(words(s)) for s in sentences(text)]
+    lengths = [n for n in lengths if n > 0]
+    # One sentence has no spread to measure. 0.0 means "no evidence of
+    # variation", which style_signal reads as AI-leaning, so it gets damped
+    # there by the short-text pull toward 0.5.
+    if len(lengths) < 2:
+        return 0.0
+    mean = statistics.mean(lengths)
+    # Coefficient of variation: stdev / mean. Higher = lumpier = more human.
+    return round(statistics.stdev(lengths) / mean, 4)
 
 
 def type_token_ratio(text: str) -> float:
     """
-    Unique words over total words. ← TODO
+    Unique words over total words.
 
     Returns:
         A float between 0 and 1. Higher means more varied vocabulary.
@@ -80,13 +88,18 @@ def type_token_ratio(text: str) -> float:
     directly comparable on it, and if your test inputs vary a lot in length,
     that alone can look like a signal.
     """
-    # TODO: replace this
-    return 0.0
+    toks = words(text)
+    if not toks:
+        return 0.0
+    # Only the first 150 words count, so long and short texts are compared on
+    # the same footing (the ratio falls as text grows).
+    toks = toks[:150]
+    return round(len(set(toks)) / len(toks), 4)
 
 
 def punctuation_density(text: str) -> float:
     """
-    How much punctuation, relative to length. ← TODO
+    How much punctuation, relative to length.
 
     Returns:
         A float. Whether you count all punctuation or only some kinds — commas,
@@ -94,15 +107,22 @@ def punctuation_density(text: str) -> float:
         more interesting than full stops, because they vary more between
         writers.
     """
-    # TODO: replace this
-    return 0.0
+    toks = words(text)
+    if not toks:
+        return 0.0
+    # Full stops are left out on purpose — every writer uses them. These are
+    # the marks that vary between writers: commas, semicolons, colons, dashes,
+    # brackets, quotes, question and exclamation marks, ellipses.
+    marks = re.findall(r"[,;:()\"!?—–…]|--|-(?=\s)|\.\.\.", text)
+    # Per 100 words. Higher = more varied punctuation = more human.
+    return round(100 * len(marks) / len(toks), 4)
 
 
 # ── Combining them ───────────────────────────────────────────────────────────
 
 def style_signal(text: str) -> float:
     """
-    The style signal as a 0–1 score. **Higher means more likely AI.** ← TODO
+    The style signal as a 0–1 score. **Higher means more likely AI.**
 
     Combine your three measures into one number. Same direction as
     `detector.model_signal`, so that `scoring.combine_signals` can treat them
@@ -122,8 +142,29 @@ def style_signal(text: str) -> float:
     you trust it. Plain and ordinary, not formal: formal prose reads as *human*
     to signal one, and it is plain writing that gets accused.
     """
-    # TODO: replace this
-    return 0.5
+    n_words = len(words(text))
+    if n_words == 0:
+        return 0.5
+
+    # Each measure becomes a 0–1 "human-ness" by clamping between a floor
+    # (reads AI) and a ceiling (reads human). The ranges come from running the
+    # calibration inputs — see README, Signals and Scoring.
+    def scale(value, low, high):
+        return min(max((value - low) / (high - low), 0.0), 1.0)
+
+    spread = scale(sentence_length_spread(text), 0.20, 0.70)
+    variety = scale(type_token_ratio(text), 0.55, 0.80)
+    punct = scale(punctuation_density(text), 4.0, 14.0)
+
+    # Spread counts most: it's the measure least affected by topic.
+    human_ness = 0.45 * spread + 0.30 * variety + 0.25 * punct
+    score = 1.0 - human_ness
+
+    # Short text doesn't give these measures enough to work with, so under 60
+    # words the score is pulled toward 0.5 ("can't tell") in proportion.
+    confidence = min(n_words / 60, 1.0)
+    score = 0.5 + (score - 0.5) * confidence
+    return round(score, 4)
 
 
 if __name__ == "__main__":
@@ -139,4 +180,3 @@ if __name__ == "__main__":
     print(f"type_token_ratio         {type_token_ratio(text)}")
     print(f"punctuation_density      {punctuation_density(text)}")
     print(f"style_signal             {style_signal(text)}   (higher = more likely AI)")
-    print("\nAll zeros? These are stubs — Milestone 4 is where you build them.")
