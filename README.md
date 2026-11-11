@@ -116,6 +116,8 @@ model_score **0.595** (common words, leaning AI) vs style_score **0.183** (lumpy
 
 Exactly 0.35 is "human" and exactly 0.72 is "ai" (`score_to_label` uses `<=` and `>=`). Every score from 0 to 1 maps to one label. All three were reached in testing (see the calibration table above).
 
+> **Unit 8:** the AI threshold is now **0.76**, so `unsure` covers 0.35–0.76 and `ai` covers 0.76–1.00. This was the one improvement; see [The Improvement](#the-improvement). The unit 7 numbers above are left as they were when submitted.
+
 **Why I worded the "unsure" one this way:** Most people who see it will have written their piece themselves, so it says plainly that it isn't an accusation and that nothing has happened to their work. It also gives a reason that doesn't blame them: checks struggle with short or plain writing.
 
 ---
@@ -495,30 +497,68 @@ EV05 was rewritten by a person, with asides, fragments, dashes and specific deta
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** one number. `AI_THRESHOLD` in `config.py` went from **0.72 to 0.76**, which widens the unsure band to 0.35–0.76. Nothing else moved: same signals, same weights, same disagreement rule, same human threshold and same label text.
 
-**Which diagnosis pointed at it:**
+**Which diagnosis pointed at it:** Pattern 3. Three of the four human false positives (FP02 formal report, FP03 non-native speaker, FP07 deliberate repetition) sat in a tight cluster at 0.749–0.754, just over 0.72. The diagnosis says the real cause is upstream: both signals measure plainness, so no threshold can separate plain human writing from AI. A signal redesign is the real fix, and it's too big to make and measure as one change. Given an overlap that can't be removed, the threshold decides _who_ the errors land on. My criterion 1 says a wrong accusation costs more than a miss, so I moved the line toward fewer accusations.
+
+**Why 0.76 and not something else.** 0.76 is the smallest round step that clears the 0.749–0.754 cluster. I'll be honest that it's fitted to the attack set: I chose it by looking at these exact scores. The "after" run on the same set will flatter it. The real test is human writing it has never seen. I didn't go to 0.85 to also clear FP05 (0.836), because that would also clear every AI piece I have except the repeated-text ones.
+
+Commands: `python run_attacks.py --set attack_set --label after` → [results/attack_run_2026-11-11_1835_after.md](results/attack_run_2026-11-11_1835_after.md), and `python run_eval.py --label after` → [results/run_2026-11-11_1836_after.md](results/run_2026-11-11_1836_after.md).
 
 ### Attack Run — After
 
-<!-- Same format. `run_attacks.py --label after` -->
+Every score is identical to the before run, to four decimal places, because neither signal changed. Only the label mapping moved, and exactly three attacks changed outcome:
 
-**Did it help, and how do I know:**
+| ID | Targeting | Before | After | Verdict before → after |
+|---|---|---|---|---|
+| FP02 | human writing, formal register | ai 0.752 | unsure 0.752 | BROKE → **HELD** |
+| FP03 | non-native English speaker | ai 0.754 | unsure 0.754 | BROKE → **HELD** |
+| FP07 | human writing repeating a phrase | ai 0.749 | unsure 0.749 | BROKE → **HELD** |
+| _all other 53 attacks_ | | _same as before_ | _same as before_ | _unchanged_ |
 
-<!-- Widening the unsure band usually fixes one problem and creates another.
-     Reporting that trade honestly is worth full credit. -->
+The full 56-row table for the after run is in the results file. It matches the before table above row for row except for these three. The flood rows again came back 200 ×10 then 429 ×2.
+
+| Family | Before: held / broke | After: held / broke |
+|---|---|---|
+| evasion | 1 / 9 | 1 / 9 |
+| false_positive | 4 / 4 | **7 / 1** |
+| prompt_injection | 3 / 3 | 3 / 3 |
+| malformed | 20 / 0 | 20 / 0 |
+| flood_same_creator | 12 / 0 | 12 / 0 |
+| **Total** | **40 / 16** | **43 / 13** |
+
+### Run Log — After
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. My own writing labelled high-confidence AI | ≤ 2 of 10 | 0/10 | 0/10 | 0/10 | MET |
+| 2. Clearly-AI vs clearly-human spread | ≥ 0.50 apart | 0.545 | 0.545 | 0.545 | MET |
+| 3. All three labels reachable across 15 pieces | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 4. Appeals return `under_review` and are logged | 10 of 10 | 10/10 | 10/10 | 10/10 | MET |
+| 5. Bad input gets a JSON response, no 500 | ≥ 8 of 10 | 10/10 | 10/10 | 10/10 | MET |
+
+All five verdicts are the same, and all three trials were again identical. The one difference is hidden inside criterion 3. **Three of my five unedited AI pieces lost the `ai` label**: "Artificial intelligence is transforming..." (0.7454), "Remote work has become increasingly common..." (0.7232) and "Reading is one of the most valuable habits..." (0.7249) are now `unsure`. Criterion 3 still passes because three other pieces still reach `ai`. One of those three is my own plain paragraph ("I went to the store today...", 0.860), which is still a false accusation.
+
+**Did it help, and how do I know:** It helped with the thing I aimed it at, and it cost exactly what I expected. Wrong accusations in the attack set's human family fell from **4 of 8 to 1 of 8**, including the worst outcome, FP03. The evidence is the same scores with different labels in the two results files. The cost is on the other side. Of my five genuine AI pieces, 3 are now `unsure` instead of `ai`, so I traded three caught AI pieces for three fewer accused humans, one for one. It did nothing for evasion (still 9 of 10 broke), because those were already under the old line. And the margins are thin: FP03 now clears the threshold by only 0.006. A slightly plainer version of the same writing would still be accused.
 
 ---
 
 ## What's Still Broken
 
-<!-- For each attack still getting through and each criterion still missed:
-     what you'd do, and why you stopped. -->
+| What | Stage | What I'd do | Why I stopped |
+|---|---|---|---|
+| **FP05** (technical docs, 0.836) and my own plain paragraph (0.860) are still called AI | Both signals | Replace the style signal's measures with ones that don't reward plainness, and add an "agreement isn't enough" rule: require some evidence beyond plainness (e.g. low perplexity _variance_ across sentences, "burstiness") before the AI label. | It's a signal redesign, not one change. Doing it alongside the threshold would make before and after impossible to compare. |
+| **Evasion: 9 of 10 get through** (Pattern 1) | Signal one calibration, then label mapping | Recalibrate signal one's midpoint (perplexity 45) on a real set of AI and human text, so typical AI text scores near 0.85 instead of 0.67. | Moving it down without new signals just brings the false positives back. Patterns 1 and 3 pull the same threshold in opposite directions. |
+| **EV01, PI01, PI02**: odd tokens drag signal one down | Signal one | Score perplexity per sentence and use the median, not the mean over all tokens, so one weird line or a handful of typos can't drag the whole score. Also flag text with a few extremely high-perplexity sentences for a person to look at instead of trusting the average. | Same reason: it changes signal one, and I'd want it measured on its own. |
+| **EV08**: 10-word AI text scores near human | Route | Raise `MIN_WORDS` (e.g. to 40) or make anything under ~60 words always `unsure`. Ten words is not enough to judge either way. | It would also refuse or neutralise FP08-style short human posts, which currently pass. I'd want to decide that trade on purpose. |
+| **EV05**: heavily human-edited AI → human | Both signals | Nothing. At that level of editing the writing is substantially human, and a style detector shouldn't claim otherwise. | Deliberate. |
+| **MF07**: Arabic refused as "too short" | Route (`stylometry.words` is ASCII-only) | Count words with a Unicode-aware pattern, and return an honest "we can only check English text" message instead of "send at least 5 words". | Out of scope for this unit's one change, but it's the cheapest fix on this list. |
+| **Repeated text** (MF08, criterion 5's long text) → near-certain AI | Signal one (repetition is maximally predictable) | De-duplicate repeated sentences before scoring. | It's rare for a real writer, and fixing it touches the route and signal one together. |
+| **Per-creator rate limit** can be dodged by making up a new `creator_id` each time | Rate limiter key | Add a second, looser per-address limit on top of the per-creator one. | Not one of the five criteria. Noted in Rate Limiting. |
 
-**The trade I'd make if this ran for real:**
+No criterion is missed, so there's no criterion fix on this list. As I said in the verdicts, though, criterion 1 was easy for my writing. The tightened version, with at least 5 plainly written pieces, is the first thing I'd run next, and I expect it to miss.
 
-<!-- Two sentences. Fewer wrong accusations means more AI text getting through.
-     Say which way you'd go and WHO PAYS FOR IT. -->
+**The trade I'd make if this ran for real:** I'd keep moving toward fewer wrong accusations, as this change did, even though it means more AI-written text passes as "unsure". The people who pay are honest writers who submit alongside AI users and get compared against them, and the site, whose AI label means less. That cost is spread thin across everyone. A false accusation lands entirely on one person, and it falls hardest on careful, plain, second-language writers like FP03, who are the people least able to argue with it.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

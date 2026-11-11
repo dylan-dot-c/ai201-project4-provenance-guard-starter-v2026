@@ -78,7 +78,7 @@ DISAGREEMENT_DAMPING = 0.5
 # that decide who pays for it.
 
 HUMAN_THRESHOLD = 0.35
-AI_THRESHOLD = 0.72     # raised from 0.65: the AI label needs stronger evidence
+AI_THRESHOLD = 0.76     # unit 8 improvement: was 0.72 (raised from 0.65 in unit 7)
 
 # Inputs the route refuses before any signal runs.
 MIN_WORDS = 5
