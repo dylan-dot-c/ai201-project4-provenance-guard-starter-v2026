@@ -112,6 +112,13 @@ def main():
 
         trials = []
         for trial in range(1, args.trials + 1):
+            if scenario.get("appeal"):
+                results = run_appeals(requests, args, scenario, trial)
+                trials.append(results)
+                passed = sum(1 for r in results if r.get("passed"))
+                print(f"  trial {trial}: {passed}/{len(results)} appeals under_review and logged")
+                continue
+
             results = []
             for i, body in enumerate(bodies_for(scenario), 1):
                 preview = describe(body)
@@ -139,6 +146,46 @@ def main():
         rows.append({"scenario": scenario, "trials": trials})
 
     write_report(rows, args)
+
+
+def run_appeals(requests, args, scenario, trial):
+    """
+    The appeal path, which text alone can't test: submit each piece, appeal
+    the content_id that came back, then read the audit log to check the
+    appeal sits next to the original decision.
+
+    A piece passes when the appeal response says `under_review` AND the log
+    holds both a decision and an appeal entry for that content_id.
+    """
+    results = []
+    for i, text in enumerate(scenario["texts"], 1):
+        body = {"text": text, "creator_id": f"eval_appeal_t{trial}_{i}"}
+        result = {"sent": describe(body)}
+        try:
+            submitted = requests.post(f"{args.url}/submit", json=body, timeout=args.timeout)
+            content_id = submitted.json().get("content_id")
+            result.update(submit_status=submitted.status_code, content_id=content_id,
+                          guess=submitted.json().get("guess"))
+
+            appealed = requests.post(f"{args.url}/appeal", timeout=args.timeout, json={
+                "content_id": content_id,
+                "reasoning": "I wrote this myself. Please have a person review it.",
+            })
+            result.update(appeal_status=appealed.status_code,
+                          status=appealed.json().get("status"))
+
+            log = requests.get(f"{args.url}/log", timeout=args.timeout).json()["entries"]
+            mine = [e for e in log if e.get("content_id") == content_id]
+            result.update(
+                log_has_decision=any(e.get("guess") is not None for e in mine),
+                log_has_appeal=any(e.get("event") == "appeal" for e in mine),
+            )
+            result["passed"] = (result["status"] == "under_review"
+                                and result["log_has_decision"] and result["log_has_appeal"])
+        except Exception as exc:  # noqa: BLE001
+            result.update(status=None, passed=False, error=f"{type(exc).__name__}: {exc}")
+        results.append(result)
+    return results
 
 
 def write_report(rows, args):
