@@ -57,6 +57,10 @@ The clearly-AI calibration piece and the clearly-human calibration piece (both q
 
 **Why this target:** The system has to be sure something isn't AI before it says so, so clearly-AI and clearly-human writing should be strongly separated, not just slightly apart.
 
+> **Revised in unit 8:** The clearly-AI piece `CLEARLY_AI` and the clearly-human piece `CLEARLY_HUMAN`, both fixed in `scenarios.py`, score at least 0.5 apart on the combined confidence score in every trial.
+>
+> **Why revised:** The original points at two texts "quoted in the README", but they never were. Only their scores were recorded, and the texts themselves were lost after unit 7. With no texts, there was nothing to re-run, so the criterion couldn't be measured at all. The target (0.5 apart) is unchanged. The pair was chosen and written into `scenarios.py` **before** either was scored: unedited AI-generated text, and piece 4 of my own writing.
+
 ---
 
 ## 3. Every label is reachable
