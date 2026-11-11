@@ -228,26 +228,25 @@ $ curl "http://127.0.0.1:5000/log?limit=2"
 
 ## Rate Limiting
 
-**My limits:** **_ per minute, _** per day
+**My limits:** **10 per minute, 200 per day** (`config.py`: `RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_PER_DAY`)
 
 **Why those numbers and not others:**
 
-<!-- Think about two people: a real writer submitting their own work a few
-     times an hour, and a script sending a thousand variations to map your
-     thresholds. Your numbers have to be liveable for the first and hostile to
-     the second. -->
+- **10 a minute.** A real writer submits a piece, reads the label, maybe edits a paragraph and submits again. Even someone pasting chapters one after another rarely gets past a few a minute, since each check takes a second or two and they have to read the result. 10 leaves room for that with headroom to spare. A script mapping my thresholds wants hundreds of near-identical variations, and at 10 a minute that takes hours instead of seconds.
+- **200 a day.** That covers a heavy day of revising, around 20 drafts of 10 pieces each. A script that waits out the per-minute window still gets stuck here: 1,000 variations would take five days from one caller.
+- **Why not lower:** 5 a minute would trip a writer re-checking a few edits in a row, and a 429 after an honest edit feels like a punishment. **Why not higher:** at 30 a minute or more, a probe can sweep the whole 0.35–0.72 unsure band in a few minutes.
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
-differently — one script can look like a thousand callers, and one household
-can look like one. -->
+**What a caller counts as:** the `creator_id` in the body, falling back to the caller's IP address when there isn't one (`app.py::rate_limit_key`). This means one writer behind a shared school or office network isn't blocked by their classmates. The cost is that a script can make up a new `creator_id` for every request and never hit the limit. Every row in `attacks.csv` does exactly that. Per-address limiting would catch that script, but it would also lump a whole household or classroom into one caller.
 
 **The run of status codes when I pushed past it:**
 
-<!-- python run_attacks.py --flood 15 -->
+`python run_attacks.py --flood 15` → `results/flood_2026-11-04_1826.md`
 
 ```
-
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
+
+The first 10 go through and the 11th onward get `429`. Each 429 is written to `logs/audit.jsonl` as an `event: rejected` entry by the 429 handler in `app.py`.
 
 ---
 
