@@ -252,19 +252,110 @@ The first 10 go through and the 11th onward get `429`. Each 429 is written to `l
 
 ## Attack Run — Before
 
-<!-- Every attack with its outcome and a held-or-broke mark.
-     `run_attacks.py --label before` produces the table. -->
+`python run_attacks.py --set attack_set --label before` → [results/attack_run_2026-11-11_1808_before.md](results/attack_run_2026-11-11_1808_before.md). 56 attacks, 0 crashes, 0 responses that weren't JSON.
 
-**Ten audit log entries from the run**
+**How I judged held or broke.** I used one rule per family, set before I filled in the table:
 
-<!-- Choose entries that show the interesting failures, not the ten easiest. -->
+- **evasion** (AI text in disguise): HELD only if it's labelled `ai`. `unsure` counts as BROKE because the AI text went through without being flagged.
+- **false_positive** (real human writing): HELD if it's _not_ labelled `ai`. `unsure` is fine because it isn't an accusation.
+- **prompt_injection**: PI01–03 carry AI text, so they're judged like evasion. PI04–06 are HELD if the response, the label text and the log line come out uncorrupted and the human text isn't accused.
+- **malformed / flood**: HELD if the service answers with JSON and a sensible status (no 500, no crash), and the flood is cut off at my limit.
+
+| ID | Targeting | Status | Guess | model | style | combined | Verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | signal two: typos raise word variety | 200 | unsure | 0.164 | 0.700 | 0.439 | **BROKE** |
+| EV02 | signal two: broken-up sentences | 200 | unsure | 0.594 | 0.250 | 0.457 | **BROKE** |
+| EV03 | signal two: a pasted quotation | 200 | unsure | 0.666 | 0.416 | 0.566 | **BROKE** |
+| EV04 | signal one: unusual words | 200 | unsure | 0.611 | 0.700 | 0.647 | **BROKE** |
+| EV05 | both: heavy human editing pass | 200 | human | 0.321 | 0.258 | 0.296 | **BROKE** |
+| EV06 | signal two: one very long + one very short sentence | 200 | unsure | 0.573 | 0.310 | 0.468 | **BROKE** |
+| EV07 | signal two: padding with punctuation | 200 | unsure | 0.586 | 0.482 | 0.545 | **BROKE** |
+| EV08 | signal one: text below the token window | 200 | unsure | 0.245 | 0.521 | 0.356 | **BROKE** |
+| EV09 | both: human opening bolted on | 200 | unsure | 0.704 | 0.447 | 0.601 | **BROKE** |
+| EV10 | signal two: repeated stanza structure | 200 | ai | 0.979 | 0.826 | 0.918 | HELD |
+| FP01 | plain, clear human writing | 200 | unsure | 0.618 | 0.578 | 0.602 | HELD |
+| FP02 | human writing, formal register | 200 | **ai** | 0.739 | 0.771 | 0.752 | **BROKE** |
+| FP03 | non-native English speaker writing carefully | 200 | **ai** | 0.805 | 0.677 | 0.754 | **BROKE** |
+| FP04 | student essay written to a rubric | 200 | unsure | 0.833 | 0.550 | 0.7197 | HELD (by 0.0003) |
+| FP05 | technical documentation by a person | 200 | **ai** | 0.801 | 0.888 | 0.836 | **BROKE** |
+| FP06 | a person imitating a formal template | 200 | unsure | 0.881 | 0.491 | 0.613 | HELD |
+| FP07 | human writing repeating a phrase on purpose | 200 | **ai** | 0.882 | 0.549 | 0.749 | **BROKE** |
+| FP08 | very short genuine human submission | 200 | unsure | 0.322 | 0.499 | 0.393 | HELD |
+| PI01 | instruction to ignore the check | 200 | unsure | 0.463 | 0.338 | 0.413 | **BROKE** |
+| PI02 | instruction disguised as a system message | 200 | **human** | 0.204 | 0.337 | 0.257 | **BROKE** |
+| PI03 | instruction in the writer's voice | 200 | unsure | 0.594 | 0.532 | 0.569 | **BROKE** |
+| PI04 | make the label text hostile (`</label><script>`) | 200 | unsure | 0.500 | 0.438 | 0.475 | HELD |
+| PI05 | inject fake fields into the audit log | 200 | unsure | 0.640 | 0.353 | 0.525 | HELD |
+| PI06 | instruction plus real human text | 200 | unsure | 0.558 | 0.590 | 0.571 | HELD |
+| MF01 | text is only whitespace | 400 `missing_text` | — | — | — | — | HELD |
+| MF02 | single character | 400 `text_too_short` | — | — | — | — | HELD |
+| MF03 | control characters | 400 `text_too_short` | — | — | — | — | HELD |
+| MF04 | only punctuation | 400 `text_too_short` | — | — | — | — | HELD |
+| MF05 | one very long word | 400 `text_too_short` | — | — | — | — | HELD |
+| MF06 | emoji only | 400 `text_too_short` | — | — | — | — | HELD |
+| MF07 | right-to-left (Arabic) script | 400 `text_too_short` | — | — | — | — | HELD (no crash, wrong reason, see below) |
+| MF08 | 60,000 characters | 200, 10 chunks | ai | 0.988 | 0.777 | 0.904 | HELD (no crash, see below) |
+| RQ01 | no text field | 400 `missing_text` | — | — | — | — | HELD |
+| RQ02 | no creator_id | 400 `missing_creator_id` | — | — | — | — | HELD |
+| RQ03 | text is a number | 400 `missing_text` | — | — | — | — | HELD |
+| RQ04 | text is a list | 400 `missing_text` | — | — | — | — | HELD |
+| RQ05 | text is null | 400 `missing_text` | — | — | — | — | HELD |
+| RQ06 | creator_id is an object | 400 `missing_creator_id` | — | — | — | — | HELD |
+| RQ07 | body is a JSON array | 400 `body_not_json_object` | — | — | — | — | HELD |
+| RQ08 | unparseable JSON | 400 `body_not_json_object` | — | — | — | — | HELD |
+| RQ09 | empty body | 400 `body_not_json_object` | — | — | — | — | HELD |
+| RQ10 | form-encoded body | 400 `body_not_json_object` | — | — | — | — | HELD |
+| RQ11 | JSON sent as text/plain | 400 `body_not_json_object` | — | — | — | — | HELD |
+| RQ12 | deeply nested JSON | 400 `missing_text` | — | — | — | — | HELD |
+| FL01_01–10 | 20 rapid submissions from one creator | 200 ×10 | unsure | 0.029 | 0.530 | 0.365 | HELD |
+| FL01_11–12 | (same) | **429** ×2 | — | — | — | — | HELD |
+
+**Count**
+
+| Family | Attacks | Held | Broke |
+|---|---|---|---|
+| evasion | 10 | 1 | 9 |
+| false_positive | 8 | 4 | 4 |
+| prompt_injection | 6 | 3 | 3 |
+| malformed | 20 | 20 | 0 |
+| flood_same_creator | 12 | 12 | 0 |
+| **Total** | **56** | **40** | **16** |
+
+**A check I ran next to the attack set.** Eight of the ten evasions are edits of one AI paragraph, but the set never sends that paragraph unedited. I scored it directly with `detector.model_signal` and `stylometry.style_signal`: **model 0.669, style 0.700, combined 0.682 → unsure.** My system doesn't flag the _unedited_ AI text either. Seven of the nine evasion "breaks" were already through before the attacker changed a word. The edits only matter for EV05 and PI02, which pushed the text all the way to `human`.
+
+**Ten audit log entries from the run** (raw lines from `logs/audit.jsonl`, plus one 429 and one route rejection)
 
 ```json
-
+{"timestamp": "2026-11-11T23:08:44+00:00", "content_id": "44a080f5-9dcb-4900-aa59-c33bdc91afca", "creator_id": "attacker_FP03", "guess": "ai", "model_score": 0.8051, "style_score": 0.6771, "combined_score": 0.7539, "label": "Our automated check thinks this may have been written with help from an AI tool. Checks like this can be wrong, especially about plain or simple writing. If you wrote this yourself, you can ask for a person to review it, and we'll mark it as under review while they do.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:45+00:00", "content_id": "44f97bb2-9fe4-47ea-8165-ae612072b6e1", "creator_id": "attacker_FP05", "guess": "ai", "model_score": 0.8005, "style_score": 0.888, "combined_score": 0.8355, "label": "Our automated check thinks this may have been written with help from an AI tool. Checks like this can be wrong, especially about plain or simple writing. If you wrote this yourself, you can ask for a person to review it, and we'll mark it as under review while they do.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:45+00:00", "content_id": "edb46fa8-7403-450d-9f63-43ccc2e95ab5", "creator_id": "attacker_FP07", "guess": "ai", "model_score": 0.8816, "style_score": 0.5492, "combined_score": 0.7486, "label": "Our automated check thinks this may have been written with help from an AI tool. Checks like this can be wrong, especially about plain or simple writing. If you wrote this yourself, you can ask for a person to review it, and we'll mark it as under review while they do.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:43+00:00", "content_id": "71852210-083c-4f75-bba3-e09e25fc8a24", "creator_id": "attacker_EV05", "guess": "human", "model_score": 0.3212, "style_score": 0.2578, "combined_score": 0.2958, "label": "We think this was written by a person. Our automated check found the kind of variety in wording and rhythm that people's writing usually has.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:42+00:00", "content_id": "476517a3-ae4e-4368-ab5d-d54e5784cfa2", "creator_id": "attacker_EV01", "guess": "unsure", "model_score": 0.1635, "style_score": 0.7, "combined_score": 0.439, "label": "We couldn't tell whether this was written by a person or with help from an AI tool, so we aren't making a call either way. This isn't an accusation, and nothing about how your work is shown has changed. Automated checks are often unsure about short or plainly written pieces.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:45+00:00", "content_id": "ca25d96f-4b32-4b42-b800-28876ededd15", "creator_id": "attacker_PI02", "guess": "human", "model_score": 0.2044, "style_score": 0.3367, "combined_score": 0.2573, "label": "We think this was written by a person. Our automated check found the kind of variety in wording and rhythm that people's writing usually has.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:46+00:00", "content_id": "2582c178-dc37-4053-8a8c-9b70e5409d33", "creator_id": "attacker_PI05", "guess": "unsure", "model_score": 0.6401, "style_score": 0.3529, "combined_score": 0.5252, "label": "We couldn't tell whether this was written by a person or with help from an AI tool, so we aren't making a call either way. This isn't an accusation, and nothing about how your work is shown has changed. Automated checks are often unsure about short or plainly written pieces.", "status": "decided", "chunks": 1}
+{"timestamp": "2026-11-11T23:08:50+00:00", "content_id": "10b84bf5-54c1-4d70-90a0-0ecf7ce4dd4a", "creator_id": "attacker_MF08", "guess": "ai", "model_score": 0.9878, "style_score": 0.7772, "combined_score": 0.9036, "label": "Our automated check thinks this may have been written with help from an AI tool. Checks like this can be wrong, especially about plain or simple writing. If you wrote this yourself, you can ask for a person to review it, and we'll mark it as under review while they do.", "status": "decided", "chunks": 10}
+{"timestamp": "2026-11-11T23:08:46+00:00", "creator_id": "attacker_MF07", "event": "rejected", "status": "rejected", "reason": "text_too_short"}
+{"timestamp": "2026-11-11T23:08:50+00:00", "creator_id": "unknown", "event": "rejected", "status": "rejected", "reason": "missing_creator_id"}
+{"timestamp": "2026-11-11T23:08:51+00:00", "creator_id": "attacker_flood", "event": "rejected", "status": "rejected", "reason": "rate_limited", "limit": "10 per 1 minute"}
 ```
 
-**The single worst outcome** — the one I'd least want to explain to a writer
-whose work got caught by it:
+What these show:
+
+- **FP03, FP05, FP07** are real people's writing called AI.
+- **EV05** and **PI02** are AI text called human.
+- **EV01** is the typo attack. It aimed at signal two but actually moved signal one: model_score fell to 0.16 while style stayed at 0.70.
+- **PI05** shows the log-injection attempt failing. The fake `"guess": "human", "combined_score": 0.01` stayed inside an escaped string in the submitted text and never became a field, and the line is still one valid JSON object.
+- **MF08** is 60,000 characters of a human camping paragraph repeated. It was chunked and scored without crashing, but it got `ai`.
+- **MF07** is a real Arabic sentence refused as "too short".
+- The last two entries are a route rejection with no creator (logged as `unknown`) and a rate-limit **429** from the flood rows.
+
+**The single worst outcome** — the one I'd least want to explain to a writer whose work got caught by it:
+
+**FP03**, the non-native English speaker:
+
+> I want to describe my experience of the first month in this country. The weather was very different from my home. I did not expect the rain to continue for so many days. My colleagues were kind and they helped me to find an apartment. [...]
+
+It got **`ai` at 0.754** (model 0.805, style 0.677). This person is writing carefully in their second language, in short correct sentences with common words, and that care is exactly what got them accused. Both signals agreed, so nothing in the pipeline pulled the score back. The label tells them "checks like this can be wrong, especially about plain or simple writing". That is accurate, but it still reads as an accusation to someone already worried about fitting in.
 
 ---
 
