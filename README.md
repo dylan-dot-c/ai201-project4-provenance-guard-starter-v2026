@@ -224,6 +224,12 @@ $ curl "http://127.0.0.1:5000/log?limit=2"
 - _Results and instrcutions to do_
 - _What I changed:_
 
+**Moment 3 (unit 8)**
+
+- _What I asked:_ I used Claude Code to run the attack set and my five criteria, judge held/broke, extend `run_eval.py` to test the appeal path, and draft the diagnoses and write-up.
+- _What it gave me:_ The runs, the results files, and a first draft of every unit 8 section. It also found that the unedited AI paragraph behind most evasion attacks already scored "unsure" (0.682), which changed how I read the evasion failures.
+- _What I decided myself:_ I supplied my own ten pieces of writing for criterion 1 rather than letting it make them up. I chose to revise criterion 2 to a fixed pair instead of reconstructing lost texts, and to keep the 0.5 target. I picked FP03 as my worst failure for the breakout.
+
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
 ---
