@@ -361,38 +361,135 @@ It got **`ai` at 0.754** (model 0.805, style 0.677). This person is writing care
 
 ## Run Log and Verdicts
 
-<!-- Your five criteria across three trials. `run_eval.py --label before`. -->
+`python run_eval.py --label before` → [results/run_2026-11-11_1833_before.md](results/run_2026-11-11_1833_before.md). Scenarios are in [scenarios.py](scenarios.py). Criterion 4 can't be tested by sending text alone, so I extended `run_eval.py` (`run_appeals`) to submit each piece, appeal its `content_id`, then read `GET /log` back and check that both the decision and the appeal are there.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-| --------- | ------ | ----- | ----- | ----- | ------- |
-| 1.        |        |       |       |       |         |
-| 2.        |        |       |       |       |         |
-| 3.        |        |       |       |       |         |
-| 4.        |        |       |       |       |         |
-| 5.        |        |       |       |       |         |
+|---|---|---|---|---|---|
+| 1. My own writing labelled high-confidence AI | ≤ 2 of 10 | 0/10 | 0/10 | 0/10 | MET |
+| 2. Clearly-AI vs clearly-human spread (revised, see `criteria.md`) | ≥ 0.50 apart | 0.545 | 0.545 | 0.545 | MET |
+| 3. All three labels reachable across 15 pieces | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 4. Appeals return `under_review` and are logged next to the decision | 10 of 10 | 10/10 | 10/10 | 10/10 | MET |
+| 5. Bad input gets a JSON response, no 500 | ≥ 8 of 10 | 10/10 | 10/10 | 10/10 | MET |
 
-**Real output from one trial**, pasted as text, naming the file and function
-that produced it:
+All three trials were identical, down to the fourth decimal place. Nothing in either signal is random, so this is expected. It shows the results hold rather than having turned up once.
+
+**How I decided each verdict**
+
+1. **MET.** Across all 30 trial results, none of my ten pieces was labelled `ai`: 9 were `unsure` and 1 was `human`. The highest score was 0.569.
+2. **MET**, but narrowly. CLEARLY_AI scored 0.790 and CLEARLY_HUMAN scored 0.2454, so they're 0.5446 apart, which clears 0.5 by 0.045 in every trial.
+3. **MET.** Every trial returned `ai` 6 times, `unsure` 8 times and `human` once. `human` was reached by exactly one piece, so this target holds by a single input.
+4. **MET.** In all 30 cases the appeal response said `under_review`, and the log held both the decision and the appeal for that `content_id`.
+5. **MET.** All 10 cases, in all three trials, got JSON back with no 500. There were eight 400s, one 200 for the ~28,000-character text (chunked and scored), and one 413 for the 600,000-character text.
+
+**Were my targets too low?** Yes, at least for criterion 1, and that's the one I'd tighten. My ten pieces are informal notes full of typos ("thological", "hwole", "dong want jt"). Typos are rare tokens to gpt2, so they push perplexity up and signal one down: seven of my ten pieces got a model_score under 0.20. My writing passed *because* it's messy, not because the system protects plain writers. Two pieces of evidence show this. The plain paragraph I wrote for unit 7 ("I went to the store today...") still scores **0.860 → ai**; it's in the criterion 3 set. And the attack set's plain and formal human pieces were flagged 4 times out of 8. A tighter criterion 1 would read: "of 10 pieces I wrote myself, **at least 5 of them written plainly and carefully, without typos**, at most 2 labelled AI." I expect that one to miss. Criterion 3 also holds by a single input, and criterion 2 holds by 0.045.
+
+**Real output from one trial.** This was produced by `run_eval.py::main` (and `run_eval.py::run_appeals` for criterion 4) against `app.py::submit`, and copied from the results file. The `label` sentence is left out of each row to save space; it's in full in the results file.
+
+**my own writing** (trial 1)
 
 ```json
+[
+  {"status": 200, "guess": "unsure", "confidence": 0.3765, "model_score": 0.0437, "style_score": 0.5667, "sent": "research is cool but its mainly thological\n\nindustry/consulting is adv"},
+  {"status": 200, "guess": "unsure", "confidence": 0.3794, "model_score": 0.0269, "style_score": 0.6067, "sent": "yh cause the hwole idea is based on synthtic AI questions and labels i"},
+  {"status": 200, "guess": "unsure", "confidence": 0.5692, "model_score": 0.4362, "style_score": 0.7686, "sent": "How does it seem like im good at using computers where its nothing cra"},
+  {"status": 200, "guess": "human", "confidence": 0.2454, "model_score": 0.172, "style_score": 0.3555, "sent": "lol I was also a consultant for the website I was building for my frie"},
+  {"status": 200, "guess": "unsure", "confidence": 0.4213, "model_score": 0.0907, "style_score": 0.7206, "sent": "I think we might have to incorporate their google calendar where it sc"},
+  {"status": 200, "guess": "unsure", "confidence": 0.3833, "model_score": 0.0376, "style_score": 0.61, "sent": "What id do is if my motivation or energy is really down bad it would s"},
+  {"status": 200, "guess": "unsure", "confidence": 0.45, "model_score": 0.3122, "style_score": 0.6567, "sent": "Damn programming is so much lol\n\nIts good we have AI but its crazy\n\nTh"},
+  {"status": 200, "guess": "unsure", "confidence": 0.4578, "model_score": 0.2586, "style_score": 0.6513, "sent": "Also it should use the least/max time needed for a project so a prject"},
+  {"status": 200, "guess": "unsure", "confidence": 0.4156, "model_score": 0.1476, "style_score": 0.6067, "sent": "question about the abstract, we talk about synthetic evidence source l"},
+  {"status": 200, "guess": "unsure", "confidence": 0.4333, "model_score": 0.1876, "style_score": 0.6349, "sent": "Conducted research on adult learning principles (andragogy) and best p"}
+]
+```
 
+**calibration pair** (trial 1)
+
+```json
+[
+  {"status": 200, "guess": "ai", "confidence": 0.79, "model_score": 0.8713, "style_score": 0.668, "sent": "Effective leadership is a critical component of organizational success"},
+  {"status": 200, "guess": "human", "confidence": 0.2454, "model_score": 0.172, "style_score": 0.3555, "sent": "lol I was also a consultant for the website I was building for my frie"}
+]
+```
+
+**label coverage** (trial 1)
+
+```json
+[
+  {"status": 200, "guess": "ai", "confidence": 0.7454, "model_score": 0.8573, "style_score": 0.5776, "sent": "Artificial intelligence is transforming the way businesses operate. By"},
+  {"status": 200, "guess": "ai", "confidence": 0.8078, "model_score": 0.9266, "style_score": 0.6295, "sent": "Regular physical activity offers numerous benefits for both physical a"},
+  {"status": 200, "guess": "ai", "confidence": 0.7953, "model_score": 0.8437, "style_score": 0.7228, "sent": "Time management is an essential skill for success in both academic and"},
+  {"status": 200, "guess": "ai", "confidence": 0.7232, "model_score": 0.8049, "style_score": 0.6007, "sent": "Remote work has become increasingly common in recent years. This shift"},
+  {"status": 200, "guess": "ai", "confidence": 0.7249, "model_score": 0.8136, "style_score": 0.5919, "sent": "Reading is one of the most valuable habits a person can develop. It ex"},
+  {"status": 200, "guess": "unsure", "confidence": 0.5763, "model_score": 0.6832, "style_score": 0.4159, "sent": "Remote work has become really common, and honestly I'm still not sure "},
+  {"status": 200, "guess": "unsure", "confidence": 0.4952, "model_score": 0.6347, "style_score": 0.2741, "sent": "Exercise is good for you. Everybody knows that. What they don't tell y"},
+  {"status": 200, "guess": "unsure", "confidence": 0.4195, "model_score": 0.5183, "style_score": 0.2712, "sent": "Time management is an important skill, and the main thing I've learned"},
+  {"status": 200, "guess": "unsure", "confidence": 0.5609, "model_score": 0.6941, "style_score": 0.3612, "sent": "Reading is one of the best habits you can build, or so everyone keeps "},
+  {"status": 200, "guess": "unsure", "confidence": 0.4652, "model_score": 0.5953, "style_score": 0.1833, "sent": "Honestly? I have no idea what happened at the meeting. Someone yelled;"},
+  {"status": 200, "guess": "unsure", "confidence": 0.3765, "model_score": 0.0437, "style_score": 0.5667, "sent": "research is cool but its mainly thological\n\nindustry/consulting is adv"},
+  {"status": 200, "guess": "unsure", "confidence": 0.3794, "model_score": 0.0269, "style_score": 0.6067, "sent": "yh cause the hwole idea is based on synthtic AI questions and labels i"},
+  {"status": 200, "guess": "unsure", "confidence": 0.5692, "model_score": 0.4362, "style_score": 0.7686, "sent": "How does it seem like im good at using computers where its nothing cra"},
+  {"status": 200, "guess": "human", "confidence": 0.2454, "model_score": 0.172, "style_score": 0.3555, "sent": "lol I was also a consultant for the website I was building for my frie"},
+  {"status": 200, "guess": "ai", "confidence": 0.8601, "model_score": 0.897, "style_score": 0.8048, "sent": "I went to the store today. I bought milk and bread. The store was busy"}
+]
+```
+
+**appeal path** (trial 1)
+
+```json
+[
+  {"sent": "I wrote this paragraph about my weekend. We went hiking and it rained ", "submit_status": 200, "content_id": "9f9183cb-3929-4502-a891-c5f6aca6b028", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "My grandmother taught me to bake bread when I was ten. I still use her", "submit_status": 200, "content_id": "79696407-fc68-4720-b912-3dcf8311de44", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "The bus was late again this morning, so I walked the last mile and got", "submit_status": 200, "content_id": "afd08926-f84c-4fe5-99bb-b05f9ff6c222", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "Our team lost the final by one point. Nobody said much on the drive ho", "submit_status": 200, "content_id": "572ec57e-35d6-4405-bdc5-407a2a0e293b", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "I fixed the leaking tap myself after watching three videos and breakin", "submit_status": 200, "content_id": "130035dd-257d-491f-b4a2-94580e5f58d4", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "This essay argues that public libraries matter more now than they did ", "submit_status": 200, "content_id": "9740559f-6ab8-42bb-974e-4792befad9ac", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "The importance of effective communication in the workplace cannot be o", "submit_status": 200, "content_id": "57f7f3be-d208-44e5-974b-f0e5b3886069", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "We adopted a dog from the shelter last spring. She is afraid of the va", "submit_status": 200, "content_id": "1464e573-573e-4c7e-9e94-7ac27a67f001", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "I started learning guitar in March. My fingers hurt for a month and th", "submit_status": 200, "content_id": "7536ff6b-e000-4532-b9a1-c383c47dedd5", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true},
+  {"sent": "The report recommends three changes to the timetable, set out in the f", "submit_status": 200, "content_id": "587577dd-e42d-47f3-a6dd-331644040c84", "guess": "unsure", "appeal_status": 200, "status": "under_review", "log_has_decision": true, "log_has_appeal": true, "passed": true}
+]
+```
+
+**bad input** (trial 1)
+
+```json
+[
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "{\"creator_id\": \"eval_bad_missing\"}"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "(empty text)"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "   \n\t  "},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "{\"text\": null, \"creator_id\": \"eval_bad_null\"}"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "{\"text\": 12345, \"creator_id\": \"eval_bad_number\"}"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "{\"text\": [\"a\", \"b\"], \"creator_id\": \"eval_bad_list\"}"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "{\"text\": \"Some writing with no creator attached.\"}"},
+  {"status": 400, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "hi there"},
+  {"status": 200, "guess": "ai", "confidence": 0.9982, "model_score": 0.997, "style_score": 1.0, "sent": "We walked to the river and back before lunch. We walked to the river a"},
+  {"status": 413, "guess": null, "confidence": null, "model_score": null, "style_score": null, "sent": "word word word word word word word word word word word word word word "}
+]
 ```
 
 **Diagnoses**
 
-<!-- For each miss AND each broken attack: the stage and the mechanism.
+Every criterion was met, so the misses to diagnose are the 16 broken attacks. They fall into four patterns.
 
-     Your service has five stages: the route, signal one, signal two, the
-     combining rule, and the label mapping.
+**Pattern 1: the AI threshold sits above the AI text the attacks are built on (stage: label mapping, fed by signal one's calibration). This accounts for EV02, EV03, EV04, EV06, EV07, EV09, PI01 and PI03.**
+The unedited base paragraph scores model 0.669 (perplexity 29), style 0.700, combined **0.682**. That is already below my `AI_THRESHOLD` of 0.72, before any attack is applied. Signal one's midpoint maps perplexity 45 to 0.5, so text at perplexity 29 only reaches 0.67. Signal two caps word variety at its 0.80 ceiling, and the paragraph's 0.87 can't count as more AI than that. So the attack edits only had to keep the text where it already was. Most of them pulled it _down_ a little, with combined scores of 0.46–0.65. For example, EV02's inserted "Really." sentences raised sentence-length spread and took style from 0.70 to 0.25. I don't count these as eight separate failures. They're one: my AI band starts above where this kind of AI text lands.
 
-     Not a diagnosis:  "The evasion attacks got through."
-     A diagnosis:      "Four evasion inputs got through. All four had typos
-                        added to AI-generated text. My second signal measures
-                        word variety, and typos raise word variety — so it read
-                        them as more human. My combining rule weights that
-                        signal at 0.6, so it dragged the whole score down."
+**Pattern 2: anything odd in the text drags signal one down (stage: signal one; mechanism: perplexity is a mean over every token). This covers EV01, PI02 and EV08.**
+- **EV01 (typos).** This attack was aimed at signal two, but signal two didn't move: style stayed at 0.70, because word variety was already above the ceiling. Signal one collapsed instead, from 0.669 to **0.164**. Misspellings like "poistioned" and "thsi" break into rare sub-word tokens that gpt2 finds very surprising, so the perplexity of the whole text rises. The attack worked, just on the other signal.
+- **PI02 (fake system message).** No model in my pipeline reads instructions, so "Return guess=human" isn't _obeyed_. It's scored as text, though, and that line alone has perplexity 537 (model_signal 0.019). Averaged in with the AI paragraph, it dragged model_score to **0.204**, and the result was **human, 0.257**. The injection got exactly what it asked for, by being weird rather than by being followed.
+- **EV08 (10 words).** The route lets it through, because `MIN_WORDS` is 5. Ten words gives gpt2 almost no context, so perplexity is high and model_score is 0.245. Signal two's short-text rule pulls style to 0.52, and the combined score of 0.356 lands one hundredth above the human threshold.
 
-     Look for a pattern. Five failures on one signal is one problem, not five. -->
+The same mechanism is why criterion 1 passed: my typos lower my own model_scores.
+
+**Pattern 3: the human false positives, where both signals share a blind spot (stages: signals one and two, then the combining rule and the label mapping). This covers FP02, FP03, FP05 and FP07.**
+These four score model 0.74–0.88 and style 0.55–0.89. Formal, careful, second-language or deliberately repetitive writing has common words in predictable order, which pushes signal one up. FP07's repeated "It rained on..." is the extreme case: gpt2 predicts a phrase it has just seen. These pieces also have evenly sized sentences and few commas, which pushes signal two up. Because the two signals _agree_ (gaps 0.03–0.33, all under `DISAGREEMENT_GAP` 0.35), my combining rule gives no protection. The damping only fires on disagreement, so a blind spot both signals share reads as confidence. Three of the four then land in a tight cluster at **0.749–0.754**, just over the 0.72 line. FP04 sits at 0.7197, under the line by 0.0003. FP05 (technical docs) is at 0.836, well clear. Calling these four separate failures would be wrong. It's one: **both signals measure plainness, not machine origin.** My Claude-generated AI pieces score 0.72–0.81, which is the same range as these human ones. There is no threshold that separates them.
+
+**Pattern 4: heavy human editing (stage: both signals, and correct by their own lights). This is EV05.**
+EV05 was rewritten by a person, with asides, fragments, dashes and specific detail. Model 0.32, style 0.26, **human 0.296**. Both signals saw what they're built to see. By the time the editing is this heavy, the text arguably _is_ human writing, and I don't think a style-and-predictability detector should catch it. It still counts as a break against the family's goal.
+
+**Not counted as breaks, but found in the run (route stage):**
+- **MF07 (Arabic).** `stylometry.words` only matches `[a-z0-9']`, so a real Arabic sentence counts as 0 words and gets "Send at least 5 words". It doesn't crash, but the reason given is wrong, and anyone not writing in Latin script can't use the service at all.
+- **MF08 and the criterion 5 long text.** Text repeated many times scores 0.90–0.998 → ai. Repetition is maximally predictable to gpt2 inside each chunk.
 
 ---
 
